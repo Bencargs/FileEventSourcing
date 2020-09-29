@@ -10,9 +10,9 @@ namespace FileEvents
         bool IsEmpty(string path);
         void GetFilelock(string path);
         void Create(string path);
-        FileStream OpenRead(string path);
-        FileStream OpenWrite(string path);
-        StreamWriter AppendText(string path);
+        IEnumerable<byte> Read(string path);
+        Stream OpenWrite(string path);
+        void AppendText(string path, string line);
         string GetDirectoryName(string path);
         string GetFileName(string path);
         IEnumerable<string> ReadLines(string path);

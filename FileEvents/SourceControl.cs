@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 
 namespace FileEvents
 {
@@ -26,11 +27,7 @@ namespace FileEvents
 		public void ApplyChange(int sequence)
 		{
 			using var preview = _fileProvider.OpenWrite($"{_path}.preview");
-			foreach (var change in _eventStore.GetChangesets(sequence))
-			{
-				var content = change.Values.ToArray();
-				preview.Write(content, change.Offset, content.Length);
-			}
+			Rebuild(preview, sequence);
 		}
 
 		/// <summary>
@@ -39,32 +36,29 @@ namespace FileEvents
 		/// <returns></returns>
 		private IEnumerable<byte> CreatePreviousVersion()
 		{
-			foreach (var change in _eventStore.GetChangesets(int.MaxValue))
-			{
-				foreach (var b in change.Values)
-				{
-					yield return b;
-				}
-			}
+			using var stream = new MemoryStream();
+			Rebuild(stream, int.MaxValue);
+
+			stream.Position = 0;
+			for (int i = stream.ReadByte(); i != -1; i = stream.ReadByte())
+				yield return (byte)i;
 		}
 
-		private EventStore CreateEventStore()
+		private void Rebuild(Stream stream, int sequence)
 		{
-			var eventStore = new EventStore(_fileProvider, _path);
-			if (eventStore.IsEmpty)
+			foreach (var change in _eventStore.GetChangesets(sequence))
 			{
-				var i = 0;
-				using (var current = ReadFile(_path).GetEnumerator())
+				foreach (var update in change.Updates)
 				{
-					while (current.MoveNext())
-					{
-						eventStore.WriteByte(i, current.Current);
-						i++;
-					}
-					eventStore.Save();
+					var content = update.Values.ToArray();
+					stream.Position = update.Offset;
+					stream.Write(content, 0, content.Length);
+				}
+				if (change.Deletion != null)
+				{
+					stream.SetLength(change.Deletion.Value);
 				}
 			}
-			return eventStore;
 		}
 
 		private IFileSystemWatcher CreateFileWatcher(IFileSystemWatcher watcher)
@@ -77,39 +71,57 @@ namespace FileEvents
 			return watcher;
 		}
 
+		private EventStore CreateEventStore()
+		{
+			var eventStore = new EventStore(_fileProvider, _path);
+			if (eventStore.IsEmpty)
+			{
+				var i = 0;
+				using var current = ReadFile(_path).GetEnumerator();
+				while (current.MoveNext())
+				{
+					eventStore.WriteByte(i, current.Current);
+					i++;
+				}
+				eventStore.Save();
+			}
+			return eventStore;
+		}
+
 		private void OnChanged(object source, FileSystemEventArgs e)
 		{
 			var i = 0;
 			using var current = ReadFile(e.FullPath).GetEnumerator();
+
+			var prev = CreatePreviousVersion().ToArray();
+			var test = Encoding.UTF8.GetString(prev);
 			using var previous = CreatePreviousVersion().GetEnumerator();
 			while (current.MoveNext())
 			{
-				// Addition or Modification
-				if (!previous.MoveNext() || current.Current != previous.Current)
+				if (!previous.MoveNext())
+				{
+					// Addition
 					_eventStore.WriteByte(i, current.Current);
+				}
+				else if (current.Current != previous.Current)
+				{
+					// Modification
+					_eventStore.WriteByte(i, current.Current);
+				}
 				i++;
 			}
-			while (previous.MoveNext())
+			if (previous.MoveNext())
 			{
-				// todo: Deletion
+				// Deletion
+				_eventStore.Truncate(i);
 			}
 			_eventStore.Save();
 		}
 
 		private IEnumerable<byte> ReadFile(string path)
 		{
-			int bytesRead;
-			var buffer = new byte[Constants.FileBufferSize];
-
 			_fileProvider.GetFilelock(path);
-			using var stream = _fileProvider.OpenRead(path);
-			while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
-			{
-				foreach (var b in buffer.Take(bytesRead))
-				{
-					yield return b;
-				}
-			}
+			return _fileProvider.Read(path);
 		}
 
 		public void Dispose()

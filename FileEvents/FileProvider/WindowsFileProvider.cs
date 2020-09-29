@@ -1,35 +1,26 @@
 ﻿using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 
 namespace FileEvents
 {
     public class WindowsFileProvider : IFileProvider
     {
-        public StreamWriter AppendText(string path)
-        {
-            return File.AppendText(path);
-        }
+        public void AppendText(string path, string line) =>
+            File.AppendAllLines(path, new[] { line });
 
-        public void Copy(string source, string dest)
-        {
+        public void Copy(string source, string dest) =>
             File.Copy(source, dest, true);
-        }
 
-        public void Create(string path)
-        {
+        public void Create(string path) =>
             File.Create(path).Close();
-        }
 
-        public bool Exists(string path)
-        {
-            return File.Exists(path);
-        }
+        public bool Exists(string path) =>
+            File.Exists(path);
 
-        public string GetDirectoryName(string path)
-        {
-            return Path.GetDirectoryName(path);
-        }
+        public string GetDirectoryName(string path) =>
+            Path.GetDirectoryName(path);
 
         public void GetFilelock(string path)
         {
@@ -40,25 +31,29 @@ namespace FileEvents
             }
         }
 
-        public string GetFileName(string path)
+        public string GetFileName(string path) =>
+            Path.GetFileName(path);
+
+        public bool IsEmpty(string path) => 
+            new FileInfo(path).Length == 0;
+
+        public IEnumerable<byte> Read(string path)
         {
-            return Path.GetFileName(path);
+            int bytesRead;
+            var buffer = new byte[Constants.FileBufferSize];
+
+            using var stream = File.OpenRead(path);
+            while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                foreach (var b in buffer.Take(bytesRead))
+                {
+                    yield return b;
+                }
+            }
         }
 
-        public bool IsEmpty(string path)
-        {
-            return new FileInfo(path).Length == 0;
-        }
-
-        public FileStream OpenRead(string path)
-        {
-            return File.OpenRead(path);
-        }
-
-        public FileStream OpenWrite(string path)
-        {
-            return File.OpenWrite(path);
-        }
+        public Stream OpenWrite(string path) =>
+            File.OpenWrite(path);
 
         public IEnumerable<string> ReadLines(string path)
         {

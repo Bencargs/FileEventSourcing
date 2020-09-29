@@ -5,32 +5,35 @@ namespace FileEventTests
 {
     public class TemporaryFile : IDisposable
     {
-        private string _filename;
-
-        public string Fullname => _filename;
-        public string Filename => Path.GetFileName(_filename);
-        public string Directory => Path.GetDirectoryName(_filename);
+        public string Fullname { get; }
+        public string Filename => Path.GetFileName(Fullname);
+        public string Directory => Path.GetDirectoryName(Fullname);
 
         public TemporaryFile()
         {
-            _filename = Path.GetTempFileName();
+            Fullname = Path.GetTempFileName();
         }
 
         public string Read()
         {
-            return File.ReadAllText(_filename);
+            return File.ReadAllText(Fullname);
         }
 
         public void Write(string text)
         {
-            File.AppendAllText(_filename, text);
+            File.WriteAllText(Fullname, text);
+        }
+
+        public void Append(string text)
+        {
+            File.AppendAllText(Fullname, text);
+            //File.AppendAllLines(Fullname, new[] { text });
         }
 
         public void Dispose()
         {
-            File.Delete(_filename);
-            File.Delete($"{_filename}.events");
-            File.Delete($"{_filename}.preview");
+            File.Delete(Fullname);
+            File.Delete($"{Fullname}.events");
         }
     }
 }

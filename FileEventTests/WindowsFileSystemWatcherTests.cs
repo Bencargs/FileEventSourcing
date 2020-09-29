@@ -16,8 +16,8 @@ namespace FileEventTests
                 target.Initialise(file.Directory, file.Filename);
                 target.Changed += (o, e) => { eventCount++; };
 
-                file.Write("test");
-                file.Write("test");
+                file.Append("test");
+                file.Append("test");
             }
             await Task.Delay(1000); // Gives the OS enough time to dispatch the event
             Assert.AreEqual(1, eventCount);
@@ -33,9 +33,9 @@ namespace FileEventTests
                 target.Initialise(file.Directory, file.Filename);
                 target.Changed += (o, e) => { eventCount++; };
 
-                file.Write("test");
+                file.Append("test");
                 await Task.Delay(500);
-                file.Write("test");
+                file.Append("test");
             }
             await Task.Delay(1000); // Gives the OS enough time to dispatch the event
             Assert.AreEqual(2, eventCount);

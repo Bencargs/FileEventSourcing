@@ -8,6 +8,7 @@ namespace FileEvents
 		private readonly string _path;
 		private readonly IFileProvider _fileProvider;
 		private readonly List<Changeset> _updates = new List<Changeset>();
+		private long? _deletion;
 
 		public EventStore(IFileProvider fileProvider, string path)
 		{
@@ -29,30 +30,31 @@ namespace FileEvents
 			_updates.Add(new Changeset(offset, value));
 		}
 
+		public void Truncate(int offset)
+		{
+			_deletion = offset;
+		}
+
 		public void Save()
 		{
 			if (TrySerializeChanges(out var changes))
 			{
 				_fileProvider.GetFilelock(_path);
-				using (var stream = _fileProvider.AppendText(_path))
-				{
-					stream.WriteLine(changes);
-				}
+				_fileProvider.AppendText(_path, changes);
+
 				_updates.Clear();
+				_deletion = null;
 			}
 		}
 
 		public bool IsEmpty => _fileProvider.IsEmpty(_path);
 
-		public IEnumerable<Changeset> GetChangesets(int maxSequence)
+		public IEnumerable<UpdateEvent> GetChangesets(int maxSequence)
 		{
 			foreach (var line in _fileProvider.ReadLines(_path).Take(maxSequence))
 			{
 				var changeset = Protobuf.Deserialize<UpdateEvent>(line);
-				foreach (var changes in changeset.Updates)
-				{
-					yield return changes;
-				}
+				yield return changeset;
 			}
 		}
 
@@ -68,10 +70,14 @@ namespace FileEvents
 		private bool TrySerializeChanges(out string changes)
 		{
 			changes = null;
-			if (!_updates.Any())
+			if (!_updates.Any() && _deletion == null)
 				return false;
 
-			var updateEvent = new UpdateEvent { Updates = _updates };
+			var updateEvent = new UpdateEvent 
+			{ 
+				Updates = _updates,
+				Deletion = _deletion
+			};
 			changes = Protobuf.Serialize(updateEvent);
 			return true;
 		}

@@ -6,6 +6,7 @@ namespace FileEvents
 {
     public class WindowsFileSystemWatcher : IFileSystemWatcher
     {
+        // Windows FileSystemWatcher is raises multiple events, best practice is to wrap it in a cache
         private readonly ConcurrentDictionary<string, DateTime> _memoryCache = new ConcurrentDictionary<string, DateTime>();
         private readonly TimeSpan Timeout = Constants.FileEventTimeout;
         private FileSystemWatcher _watcher;
