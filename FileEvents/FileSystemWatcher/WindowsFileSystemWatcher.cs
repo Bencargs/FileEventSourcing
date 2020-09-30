@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 
 namespace FileEvents
@@ -7,47 +8,62 @@ namespace FileEvents
     public class WindowsFileSystemWatcher : IFileSystemWatcher
     {
         // Windows FileSystemWatcher is raises multiple events, best practice is to wrap it in a cache
-        private readonly ConcurrentDictionary<string, DateTime> _memoryCache = new ConcurrentDictionary<string, DateTime>();
+        private readonly Dictionary<string, FileSystemWatcher> _watchers =
+            new Dictionary<string, FileSystemWatcher>();
+        private readonly ConcurrentDictionary<string, DateTime> _lastEvent = 
+            new ConcurrentDictionary<string, DateTime>();
         private readonly TimeSpan Timeout = Constants.FileEventTimeout;
-        private FileSystemWatcher _watcher;
+        private readonly IFileProvider _fileProvider;
 
-        public event FileSystemEventHandler Changed;
+        public event FileChangedEventHandler Changed;
 
-        public void Initialise(string directory, string path)
+        public WindowsFileSystemWatcher(IFileProvider fileProvider)
         {
-            _watcher = new FileSystemWatcher(directory)
-            {
-                Filter = path,
-                EnableRaisingEvents = true,
-            };
-            _watcher.Changed += OnChanged;
+            _fileProvider = fileProvider;
         }
 
-        private bool HasFileEventFiredRecently(string filename)
+        public void Monitor(string path)
+        {
+            var directory = _fileProvider.GetDirectoryName(path);
+            var file = _fileProvider.GetFileName(path);
+            var watcher = new FileSystemWatcher(directory)
+            {
+                Filter = file,
+                EnableRaisingEvents = true
+            };
+            watcher.Changed += OnChanged;
+
+            _watchers[path] = watcher;
+        }
+
+        private bool HasEventFiredRecently(string filename)
         {
             var hasFileEventRecently = false;
             var currentTime = DateTime.Now;
-            if (_memoryCache.TryGetValue(filename, out var lastEventTime))
+            if (_lastEvent.TryGetValue(filename, out var lastEventTime))
             {
                 var timeSinceLastEvent = currentTime - lastEventTime;
                 hasFileEventRecently = timeSinceLastEvent < Timeout;
             }
-            _memoryCache[filename] = currentTime;
+            _lastEvent[filename] = currentTime;
 
             return hasFileEventRecently;
         }
 
         private void OnChanged(object sender, FileSystemEventArgs e)
         {
-            if (HasFileEventFiredRecently(e.FullPath))
+            if (HasEventFiredRecently(e.FullPath))
                 return;
 
-            Changed?.Invoke(this, e);
+            Changed?.Invoke(e.FullPath);
         }
 
         public void Dispose()
         {
-            _watcher?.Dispose();
+            foreach (var w in _watchers)
+            {
+                w.Value?.Dispose();
+            }
         }
     }
 }

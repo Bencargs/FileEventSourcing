@@ -12,9 +12,10 @@ namespace FileEventTests
             var eventCount = 0;
             using (var file = new TemporaryFile())
             {
-                var target = new WindowsFileSystemWatcher();
-                target.Initialise(file.Directory, file.Filename);
-                target.Changed += (o, e) => { eventCount++; };
+                var fileProvider = new WindowsFileProvider();
+                var target = new WindowsFileSystemWatcher(fileProvider);
+                target.Monitor(file.Fullname);
+                target.Changed += (e) => { eventCount++; };
 
                 file.Append("test");
                 file.Append("test");
@@ -29,9 +30,10 @@ namespace FileEventTests
             var eventCount = 0;
             using (var file = new TemporaryFile())
             {
-                var target = new WindowsFileSystemWatcher();
-                target.Initialise(file.Directory, file.Filename);
-                target.Changed += (o, e) => { eventCount++; };
+                var fileProvider = new WindowsFileProvider();
+                var target = new WindowsFileSystemWatcher(fileProvider);
+                target.Monitor(file.Fullname);
+                target.Changed += (e) => { eventCount++; };
 
                 file.Append("test");
                 await Task.Delay(500);

@@ -1,127 +1,71 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
 
 namespace FileEvents
 {
-	public class SourceControl : IDisposable
+	public class SourceControl : ISourceControl, IDisposable
 	{
-		private readonly string _path;
+		private readonly IEventSource _eventStore;
 		private readonly IFileProvider _fileProvider;
 		private readonly IFileSystemWatcher _watcher;
-		private readonly EventStore _eventStore;
 
-		public SourceControl(IFileProvider fileProvider, IFileSystemWatcher watcher, string path)
+		public SourceControl(
+			IFileProvider fileProvider, 
+			IEventSource eventStore, 
+			IFileSystemWatcher watcher)
 		{
-			_path = path;
 			_fileProvider = fileProvider;
-			if (!_fileProvider.Exists(_path))
-				throw new FileNotFoundException(_path);
-
-			_eventStore = CreateEventStore();
-			_watcher = CreateFileWatcher(watcher);
+			_eventStore = eventStore;
+			_watcher = watcher;
+			_watcher.Changed += OnChanged;
 		}
 
-		public void ApplyChange(int sequence)
+		public void Add(string path)
 		{
-			using var preview = _fileProvider.OpenWrite($"{_path}.preview");
-			Rebuild(preview, sequence);
+			if (!_fileProvider.Exists(path))
+				throw new FileNotFoundException(path);
+			
+			_eventStore.CreateRepository(path);
+			_watcher.Monitor(path);
 		}
 
-		/// <summary>
-		/// Preforms a projection until most recent event
-		/// </summary>
-		/// <returns></returns>
-		private IEnumerable<byte> CreatePreviousVersion()
+		public Document Preview(string path, int bookmark) =>
+			_eventStore.Rebuild(path, bookmark);
+
+		private void OnChanged(string path)
 		{
-			using var stream = new MemoryStream();
-			Rebuild(stream, int.MaxValue);
-
-			stream.Position = 0;
-			for (int i = stream.ReadByte(); i != -1; i = stream.ReadByte())
-				yield return (byte)i;
+			var previous = _eventStore.Rebuild(path);
+			var updateEvent = Compare(path, previous);
+			_eventStore.Update(path, updateEvent);
 		}
 
-		private void Rebuild(Stream stream, int sequence)
-		{
-			foreach (var change in _eventStore.GetChangesets(sequence))
-			{
-				foreach (var update in change.Updates)
-				{
-					var content = update.Values.ToArray();
-					stream.Position = update.Offset;
-					stream.Write(content, 0, content.Length);
-				}
-				if (change.Deletion != null)
-				{
-					stream.SetLength(change.Deletion.Value);
-				}
-			}
-		}
-
-		private IFileSystemWatcher CreateFileWatcher(IFileSystemWatcher watcher)
-		{
-			var directory = _fileProvider.GetDirectoryName(_path);
-			var filename = _fileProvider.GetFileName(_path);
-			watcher.Initialise(directory, filename);
-			watcher.Changed += OnChanged;
-
-			return watcher;
-		}
-
-		private EventStore CreateEventStore()
-		{
-			var eventStore = new EventStore(_fileProvider, _path);
-			if (eventStore.IsEmpty)
-			{
-				var i = 0;
-				using var current = ReadFile(_path).GetEnumerator();
-				while (current.MoveNext())
-				{
-					eventStore.WriteByte(i, current.Current);
-					i++;
-				}
-				eventStore.Save();
-			}
-			return eventStore;
-		}
-
-		private void OnChanged(object source, FileSystemEventArgs e)
+		private UpdateEvent Compare(string path, Document previous)
 		{
 			var i = 0;
-			using var current = ReadFile(e.FullPath).GetEnumerator();
-
-			var prev = CreatePreviousVersion().ToArray();
-			var test = Encoding.UTF8.GetString(prev);
-			using var previous = CreatePreviousVersion().GetEnumerator();
-			while (current.MoveNext())
+			var updateEvent = new UpdateEvent();
+			using var currentData = _fileProvider.Read(path).GetEnumerator();
+			using var previousData = _fileProvider.Read(previous.Data).GetEnumerator();
+			while (currentData.MoveNext())
 			{
-				if (!previous.MoveNext())
+				if (!previousData.MoveNext())
 				{
 					// Addition
-					_eventStore.WriteByte(i, current.Current);
+					updateEvent.WriteByte(i, currentData.Current);
 				}
-				else if (current.Current != previous.Current)
+				else if (currentData.Current != previousData.Current)
 				{
 					// Modification
-					_eventStore.WriteByte(i, current.Current);
+					updateEvent.WriteByte(i, currentData.Current);
 				}
 				i++;
 			}
-			if (previous.MoveNext())
+			if (previousData.MoveNext())
 			{
 				// Deletion
-				_eventStore.Truncate(i);
+				updateEvent.Deletion = i;
 			}
-			_eventStore.Save();
-		}
 
-		private IEnumerable<byte> ReadFile(string path)
-		{
-			_fileProvider.GetFilelock(path);
-			return _fileProvider.Read(path);
+			return updateEvent;
 		}
 
 		public void Dispose()

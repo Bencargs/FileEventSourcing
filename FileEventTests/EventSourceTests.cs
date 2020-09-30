@@ -8,8 +8,6 @@
 //using System.Linq;
 //using System.Text;
 
-//WIP - these tests moved to EventSourceTest
-// This class should test that monitor events call correct eventsource methods?
 //namespace FileEventTests
 //{
 //    public class RebuildTests
@@ -17,22 +15,40 @@
 //        [Test]
 //        public void RevertAddition()
 //        {
-//            var file = "";
-//            var events = new List<string>();
-//            var fileWatcher = Substitute.For<IFileSystemWatcher>();
-//            using var target = CreateSourceControl(fileWatcher, () => file, events);
-//            target.Add("");
+//            var fileProvider = Substitute.For<IFileProvider>();
+//            fileProvider.Read().returns file as bytes
+//            filprovider .eradlines.returns evenyts as IEnumerable<string>
+//            fileprov .appendtext does events add line
 
-//            file = "One";
-//            fileWatcher.Changed += CreateFileUpdatedEvent();
-//            file += $"Two";
-//            fileWatcher.Changed += CreateFileUpdatedEvent();
-//            file += $"Three";
-//            fileWatcher.Changed += CreateFileUpdatedEvent();
-//            var actual = target.Preview("", 2);
+//            var target = new EventSource(fileProvider);
 
-//            var content = Encoding.UTF8.GetString(((MemoryStream)actual.Data).ToArray());
-//            Assert.AreEqual("OneTwo", content);
+//            var i = 0;
+//            var evt = new UpdateEvent();
+//            foreach (var b in Encoding.UTF8.GetBytes("testString"))
+//            {
+//                evt.WriteByte(i++, b);
+//            }
+
+//            target.Update("", evt);
+
+
+
+//            //var file = "";
+//            //var events = new List<string>();
+//            //var fileWatcher = Substitute.For<IFileSystemWatcher>();
+//            //using var target = CreateSourceControl(fileWatcher, () => file, events);
+//            //target.Add("");
+
+//            //file = "One";
+//            //fileWatcher.Changed += CreateFileUpdatedEvent();
+//            //file += $"Two";
+//            //fileWatcher.Changed += CreateFileUpdatedEvent();
+//            //file += $"Three";
+//            //fileWatcher.Changed += CreateFileUpdatedEvent();
+//            //var actual = target.Preview("", 2);
+
+//            //var content = Encoding.UTF8.GetString(((MemoryStream)actual.Data).ToArray());
+//            //Assert.AreEqual("OneTwo", content);
 //        }
 
 //        [Test]

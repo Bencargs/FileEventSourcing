@@ -6,8 +6,6 @@ namespace FileEventTests
     public class TemporaryFile : IDisposable
     {
         public string Fullname { get; }
-        public string Filename => Path.GetFileName(Fullname);
-        public string Directory => Path.GetDirectoryName(Fullname);
 
         public TemporaryFile()
         {
@@ -27,7 +25,6 @@ namespace FileEventTests
         public void Append(string text)
         {
             File.AppendAllText(Fullname, text);
-            //File.AppendAllLines(Fullname, new[] { text });
         }
 
         public void Dispose()

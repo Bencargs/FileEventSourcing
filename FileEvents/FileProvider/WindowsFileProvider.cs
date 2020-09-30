@@ -39,10 +39,15 @@ namespace FileEvents
 
         public IEnumerable<byte> Read(string path)
         {
+            GetFilelock(path);
+            return File.ReadAllBytes(path);
+        }
+
+        
+        public IEnumerable<byte> Read(Stream stream)
+        {
             int bytesRead;
             var buffer = new byte[Constants.FileBufferSize];
-
-            using var stream = File.OpenRead(path);
             while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
             {
                 foreach (var b in buffer.Take(bytesRead))

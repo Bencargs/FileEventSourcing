@@ -11,6 +11,7 @@ namespace FileEvents
         void GetFilelock(string path);
         void Create(string path);
         IEnumerable<byte> Read(string path);
+        IEnumerable<byte> Read(Stream stream);
         Stream OpenWrite(string path);
         void AppendText(string path, string line);
         string GetDirectoryName(string path);
