@@ -9,11 +9,13 @@ namespace FileEvents
         {
             var container = ConfigureServices();
 
-            var filename = @"C:\Temp\test\a.txt";
             using var sourceControl = new SourceControl(
                 container.GetService<IFileProvider>(),
                 container.GetService<IEventSource>(),
                 container.GetService<IFileSystemWatcher>());
+
+            // todo: replace with a background service
+            var filename = @"C:\Temp\test\a.txt";
             sourceControl.Add(filename);
             while (true)
             {
@@ -23,9 +25,6 @@ namespace FileEvents
 
         private static ServiceProvider ConfigureServices()
         {
-            // todo: file system watcher requires a directory to initialise
-            // refactor with a dictionary of watcher per directory?
-
             var container = new ServiceCollection();
             container.AddSingleton<IFileProvider, WindowsFileProvider>();
             container.AddSingleton<IFileSystemWatcher, WindowsFileSystemWatcher>();
