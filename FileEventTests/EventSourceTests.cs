@@ -55,7 +55,7 @@ namespace FileEventTests
             target.CreateRepository("path");
             target.Update("path", updateEvent);
 
-            var expected = Protobuf.Serialize(updateEvent);
+            var expected = Protobuf.Serialize(updateEvent).Compress();
             fileProvider.Received().AppendText("path.events", expected);
         }
 

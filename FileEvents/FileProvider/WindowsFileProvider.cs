@@ -9,10 +9,7 @@ namespace FileEvents
     {
         public void AppendText(string path, string line) =>
             File.AppendAllLines(path, new[] { line });
-
-        public void Copy(string source, string dest) =>
-            File.Copy(source, dest, true);
-
+        
         public void Create(string path) =>
             File.Create(path).Close();
 
@@ -37,13 +34,9 @@ namespace FileEvents
         public bool IsEmpty(string path) => 
             new FileInfo(path).Length == 0;
 
-        public IEnumerable<byte> Read(string path)
-        {
-            GetFilelock(path);
-            return File.ReadAllBytes(path);
-        }
+        public IEnumerable<byte> Read(string path) =>
+            File.ReadAllBytes(path);
 
-        
         public IEnumerable<byte> Read(Stream stream)
         {
             int bytesRead;
@@ -57,14 +50,8 @@ namespace FileEvents
             }
         }
 
-        public Stream OpenWrite(string path) =>
-            File.OpenWrite(path);
-
-        public IEnumerable<string> ReadLines(string path)
-        {
-            GetFilelock(path);
-            return File.ReadLines(path);
-        }
+        public IEnumerable<string> ReadLines(string path) =>
+            File.ReadLines(path);
 
         private static bool IsFileLocked(FileInfo file)
         {

@@ -43,6 +43,7 @@ namespace FileEvents
 		{
 			var i = 0;
 			var updateEvent = new UpdateEvent();
+			_fileProvider.GetFilelock(path);
 			using var currentData = _fileProvider.Read(path).GetEnumerator();
 			using var previousData = _fileProvider.Read(previous.Data).GetEnumerator();
 			while (currentData.MoveNext())

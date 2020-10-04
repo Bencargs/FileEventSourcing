@@ -32,8 +32,9 @@ namespace FileEvents
 			var eventsPath = _repositories[path];
 			if (TrySerializeChanges(updateEvent, out var changes))
 			{
+				var compressed = changes.Compress();
 				_fileProvider.GetFilelock(eventsPath);
-				_fileProvider.AppendText(eventsPath, changes);
+				_fileProvider.AppendText(eventsPath, compressed);
 			}
 		}
 
@@ -42,10 +43,12 @@ namespace FileEvents
 			var eventsPath = _repositories[path];
 			bookmark ??= int.MaxValue;
 
+			_fileProvider.GetFilelock(path);
 			var document = new Document { Data = new MemoryStream() };
 			foreach (var line in _fileProvider.ReadLines(eventsPath).Take(bookmark.Value))
 			{
-				var updateEvent = Protobuf.Deserialize<UpdateEvent>(line);
+				var decompressed = line.Decompress();
+				var updateEvent = Protobuf.Deserialize<UpdateEvent>(decompressed);
 				document.Apply(updateEvent);
 			}
 			return document;
@@ -55,6 +58,7 @@ namespace FileEvents
 		{
 			var i = 0;
 			var updateEvent = new UpdateEvent();
+			_fileProvider.GetFilelock(path);
 			using var source = _fileProvider.Read(path).GetEnumerator();
 			while (source.MoveNext())
 			{
