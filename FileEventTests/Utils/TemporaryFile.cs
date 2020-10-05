@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FileEvents;
+using System;
 using System.IO;
 
 namespace FileEventTests

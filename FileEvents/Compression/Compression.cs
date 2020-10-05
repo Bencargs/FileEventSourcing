@@ -13,7 +13,7 @@ namespace FileEvents
 			var stream = new MemoryStream();
 			using (var zip = new GZipStream(stream, CompressionMode.Compress, true))
 			{
-				zip.Write(buffer, 0, buffer.Length);
+				zip.WriteAsync(buffer, 0, buffer.Length);
 			}
 
 			stream.Position = 0;

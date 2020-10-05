@@ -19,5 +19,12 @@ namespace FileEvents
                 Data.SetLength(updateEvent.Deletion.Value);
             }
         }
+
+        public void Save(string path)
+        {
+            using var fileStream = File.Create(path);
+            Data.Position = 0;
+            Data.CopyTo(fileStream);
+        }
     }
 }

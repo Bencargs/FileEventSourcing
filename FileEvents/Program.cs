@@ -1,36 +1,81 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using System;
+using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace FileEvents
 {
     class Program
     {
-        static void Main(string[] args)
+        public class ChangeTrackingService : IHostedService
         {
-            var container = ConfigureServices();
+            private readonly IConfiguration _configuration;
+            private readonly ISourceControl _sourceControl;
 
-            using var sourceControl = new SourceControl(
-                container.GetService<IFileProvider>(),
-                container.GetService<IEventSource>(),
-                container.GetService<IFileSystemWatcher>());
-
-            // todo: replace with a background service
-            var filename = @"C:\Temp\test\a.txt";
-            sourceControl.Add(filename);
-            while (true)
+            public ChangeTrackingService(
+                IConfiguration configuration, 
+                ISourceControl sourceControl)
             {
-                Thread.Sleep(500);
+                _configuration = configuration;
+                _sourceControl = sourceControl;
+            }
+
+            public Task StartAsync(CancellationToken cancellationToken)
+            {
+                var repositories = _configuration.GetSection("Repositories").Get<string[]>();
+                foreach (var repo in repositories)
+                    _sourceControl.Add(repo);
+
+                return Task.CompletedTask;
+            }
+
+            public Task StopAsync(CancellationToken cancellationToken)
+            {
+                return Task.CompletedTask;
             }
         }
 
-        private static ServiceProvider ConfigureServices()
+        static async Task Main(string[] args)
         {
-            var container = new ServiceCollection();
-            container.AddSingleton<IFileProvider, WindowsFileProvider>();
-            container.AddSingleton<IFileSystemWatcher, WindowsFileSystemWatcher>();
-            container.AddSingleton<IEventSource, EventSource>();
+            await new HostBuilder()
+                .ConfigureServices((hostContext, services) =>
+                {
+                    services.AddSingleton(LoadSettings())
+                        .AddSingleton<IFileProvider, WindowsFileProvider>()
+                        .AddSingleton<IFileSystemWatcher, WindowsFileSystemWatcher>()
+                        .AddSingleton<IEventSource, EventSource>()
+                        .AddSingleton<ISourceControl, SourceControl>()
+                        .AddSingleton<IHostedService, ChangeTrackingService>();
+                }).RunConsoleAsync();
+        }
 
-            return container.BuildServiceProvider();
+        private static IServiceProvider ConfigureServices()
+        {
+            var settings = LoadSettings();
+            var container = new ServiceCollection()
+                .AddSingleton(settings)
+                .AddSingleton<IFileProvider, WindowsFileProvider>()
+                .AddSingleton<IFileSystemWatcher, WindowsFileSystemWatcher>()
+                .AddSingleton<IEventSource, EventSource>()
+                .AddSingleton<ISourceControl, SourceControl>()
+                .AddSingleton<IHostedService, ChangeTrackingService>()
+                .BuildServiceProvider();
+
+            return container;
+        }
+
+        private static IConfiguration LoadSettings()
+        {
+            var configuration = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile($"{AppDomain.CurrentDomain.BaseDirectory}/appsettings.json")
+                .AddEnvironmentVariables()
+                .Build();
+
+            return configuration;
         }
     }
 }
