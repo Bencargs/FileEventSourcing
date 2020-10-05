@@ -2,13 +2,14 @@
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace FileEvents
 {
     public class WindowsFileProvider : IFileProvider
     {
-        public void AppendText(string path, string line) =>
-            File.AppendAllLines(path, new[] { line });
+        public async Task AppendTextAsync(string path, string line) =>
+            await File.AppendAllLinesAsync(path, new[] { line });
         
         public void Create(string path) =>
             File.Create(path).Close();
@@ -19,29 +20,26 @@ namespace FileEvents
         public string GetDirectoryName(string path) =>
             Path.GetDirectoryName(path);
 
-        public void GetFilelock(string path)
-        {
-            var file = new FileInfo(path);
-            while (IsFileLocked(file))
-            {
-                Thread.Sleep(Constants.FileLockTimeout);
-            }
-        }
-
         public string GetFileName(string path) =>
             Path.GetFileName(path);
 
-        public bool IsEmpty(string path) => 
+        public bool IsEmpty(string path) =>
             new FileInfo(path).Length == 0;
 
-        public IEnumerable<byte> Read(string path) =>
-            File.ReadAllBytes(path);
+        public async IAsyncEnumerable<byte> ReadAsync(string path)
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read);
+            await foreach (var b in ReadAsync(stream))
+            {
+                yield return b;
+            }
+        }
 
-        public IEnumerable<byte> Read(Stream stream)
+        public async IAsyncEnumerable<byte> ReadAsync(Stream stream)
         {
             int bytesRead;
             var buffer = new byte[Constants.FileBufferSize];
-            while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
+            while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length)) > 0)
             {
                 foreach (var b in buffer.Take(bytesRead))
                 {
@@ -50,8 +48,17 @@ namespace FileEvents
             }
         }
 
-        public IEnumerable<string> ReadLines(string path) =>
-            File.ReadLines(path);
+        public async Task<string[]> ReadLinesAsync(string path)
+            => await File.ReadAllLinesAsync(path);
+
+        public async Task GetFilelock(string path)
+        {
+            var file = new FileInfo(path);
+            while (IsFileLocked(file))
+            {
+                await Task.Delay(Constants.FileLockTimeout);
+            }
+        }
 
         private static bool IsFileLocked(FileInfo file)
         {

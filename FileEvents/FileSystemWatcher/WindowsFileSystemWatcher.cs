@@ -29,6 +29,7 @@ namespace FileEvents
             var watcher = new FileSystemWatcher(directory)
             {
                 Filter = file,
+                NotifyFilter = NotifyFilters.LastWrite,
                 EnableRaisingEvents = true
             };
             watcher.Changed += OnChanged;

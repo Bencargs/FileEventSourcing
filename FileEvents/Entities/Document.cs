@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.Threading.Tasks;
 
 namespace FileEvents
 {
@@ -6,13 +7,13 @@ namespace FileEvents
     {
         public Stream Data { get; set; }
 
-        public void Apply(UpdateEvent updateEvent)
+        public async Task Apply(UpdateEvent updateEvent)
         {
             foreach (var update in updateEvent.Updates)
             {
                 var data = update.Values.ToArray();
                 Data.Position = update.Offset;
-                Data.Write(data, 0, data.Length);
+                await Data.WriteAsync(data, 0, data.Length);
             }
             if (updateEvent.Deletion.HasValue)
             {
@@ -20,11 +21,11 @@ namespace FileEvents
             }
         }
 
-        public void Save(string path)
+        public async Task Save(string path)
         {
             using var fileStream = File.Create(path);
             Data.Position = 0;
-            Data.CopyTo(fileStream);
+            await Data.CopyToAsync(fileStream);
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace FileEvents
 {
@@ -15,7 +16,7 @@ namespace FileEvents
 			_fileProvider = fileProvider;
 		}
 
-		public void CreateRepository(string path)
+		public async Task CreateRepository(string path)
 		{
 			var eventsPath = $"{path}.events";
 			_repositories[path] = eventsPath;
@@ -24,48 +25,49 @@ namespace FileEvents
 				_fileProvider.Create(eventsPath);
 
 			if (_fileProvider.IsEmpty(eventsPath))
-				Initialise(path);
+				await Initialise(path);
 		}
 
-		public void Update(string path, UpdateEvent updateEvent)
+		public async Task Update(string path, UpdateEvent updateEvent)
 		{
 			var eventsPath = _repositories[path];
 			if (TrySerializeChanges(updateEvent, out var changes))
 			{
-				var compressed = changes.Compress();
-				_fileProvider.GetFilelock(eventsPath);
-				_fileProvider.AppendText(eventsPath, compressed);
+				var compressionTask = changes.Compress();
+				var fileLockTask = _fileProvider.GetFilelock(eventsPath);
+				await Task.WhenAll(compressionTask, fileLockTask);
+				await _fileProvider.AppendTextAsync(eventsPath, compressionTask.Result);
 			}
 		}
 
-		public Document Rebuild(string path, int? bookmark = null)
+		public async Task<Document> Rebuild(string path, int? bookmark = null)
 		{
 			var eventsPath = _repositories[path];
 			bookmark ??= int.MaxValue;
 
-			_fileProvider.GetFilelock(path);
 			var document = new Document { Data = new MemoryStream() };
-			foreach (var line in _fileProvider.ReadLines(eventsPath).Take(bookmark.Value))
+			await _fileProvider.GetFilelock(path);
+			var fileEvents = await _fileProvider.ReadLinesAsync(eventsPath);
+			foreach (var line in fileEvents.Take(bookmark.Value))
 			{
-				var decompressed = line.Decompress();
+				var decompressed = await line.Decompress();
 				var updateEvent = Protobuf.Deserialize<UpdateEvent>(decompressed);
-				document.Apply(updateEvent);
+				await document.Apply(updateEvent);
 			}
+
 			return document;
 		}
 
-		private void Initialise(string path)
+		private async Task Initialise(string path)
 		{
 			var i = 0;
 			var updateEvent = new UpdateEvent();
-			_fileProvider.GetFilelock(path);
-			using var source = _fileProvider.Read(path).GetEnumerator();
-			while (source.MoveNext())
+			await _fileProvider.GetFilelock(path);
+			await foreach (var b in _fileProvider.ReadAsync(path))
 			{
-				updateEvent.WriteByte(i, source.Current);
-				i++;
+				updateEvent.WriteByte(i++, b);
 			}
-			Update(path, updateEvent);
+			await Update(path, updateEvent);
 		}
 
 		private bool TrySerializeChanges(UpdateEvent updateEvent, out string changes)

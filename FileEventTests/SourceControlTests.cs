@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace FileEventTests
 {
@@ -27,19 +28,19 @@ namespace FileEventTests
         }
 
         [Test]
-        public void DeterminesDeltaOnAddition()
+        public async Task DeterminesDeltaOnAddition()
         {
             var readModel = "A";
             var file = "AB";
             var fileProvider = Substitute.For<IFileProvider>();
             fileProvider.Exists(Arg.Any<string>()).Returns(true);
-            fileProvider.Read(Arg.Any<string>()).Returns(Encoding.UTF8.GetBytes(file));
-            fileProvider.Read(Arg.Any<Stream>()).Returns(Encoding.UTF8.GetBytes(readModel));
+            fileProvider.ReadAsync(Arg.Any<string>()).Returns(Encoding.UTF8.GetBytes(file).ToAsyncEnumerable());
+            fileProvider.ReadAsync(Arg.Any<Stream>()).Returns(Encoding.UTF8.GetBytes(readModel).ToAsyncEnumerable());
             var eventSource = Substitute.For<IEventSource>();
             eventSource.Rebuild(Arg.Any<string>()).Returns(new Document());
             var watcher = Substitute.For<IFileSystemWatcher>();
             var target = new SourceControl(fileProvider, eventSource, watcher);
-            target.Add("path");
+            await target.Add("path");
 
             watcher.Changed += Raise.Event<FileChangedEventHandler>("path");
 
@@ -58,19 +59,19 @@ namespace FileEventTests
         }
 
         [Test]
-        public void DeterminesDeltaOnModification()
+        public async Task DeterminesDeltaOnModification()
         {
             var file = "BB";
             var readModel = "AB";
             var fileProvider = Substitute.For<IFileProvider>();
             fileProvider.Exists(Arg.Any<string>()).Returns(true);
-            fileProvider.Read(Arg.Any<string>()).Returns(Encoding.UTF8.GetBytes(file));
-            fileProvider.Read(Arg.Any<Stream>()).Returns(Encoding.UTF8.GetBytes(readModel));
+            fileProvider.ReadAsync(Arg.Any<string>()).Returns(Encoding.UTF8.GetBytes(file).ToAsyncEnumerable());
+            fileProvider.ReadAsync(Arg.Any<Stream>()).Returns(Encoding.UTF8.GetBytes(readModel).ToAsyncEnumerable());
             var eventSource = Substitute.For<IEventSource>();
             eventSource.Rebuild(Arg.Any<string>()).Returns(new Document());
             var watcher = Substitute.For<IFileSystemWatcher>();
             var target = new SourceControl(fileProvider, eventSource, watcher);
-            target.Add("path");
+            await target.Add("path");
 
             watcher.Changed += Raise.Event<FileChangedEventHandler>("path");
 
@@ -89,19 +90,19 @@ namespace FileEventTests
         }
 
         [Test]
-        public void DeterminesDeltaOnMultipleModification()
+        public async Task DeterminesDeltaOnMultipleModification()
         {
             var file = "AXCYZ";
             var readModel = "ABCDE";
             var fileProvider = Substitute.For<IFileProvider>();
             fileProvider.Exists(Arg.Any<string>()).Returns(true);
-            fileProvider.Read(Arg.Any<string>()).Returns(Encoding.UTF8.GetBytes(file));
-            fileProvider.Read(Arg.Any<Stream>()).Returns(Encoding.UTF8.GetBytes(readModel));
+            fileProvider.ReadAsync(Arg.Any<string>()).Returns(Encoding.UTF8.GetBytes(file).ToAsyncEnumerable());
+            fileProvider.ReadAsync(Arg.Any<Stream>()).Returns(Encoding.UTF8.GetBytes(readModel).ToAsyncEnumerable());
             var eventSource = Substitute.For<IEventSource>();
             eventSource.Rebuild(Arg.Any<string>()).Returns(new Document());
             var watcher = Substitute.For<IFileSystemWatcher>();
             var target = new SourceControl(fileProvider, eventSource, watcher);
-            target.Add("path");
+            await target.Add("path");
 
             watcher.Changed += Raise.Event<FileChangedEventHandler>("path");
 
@@ -125,19 +126,19 @@ namespace FileEventTests
         }
 
         [Test]
-        public void DeterminesDeltaOnDeletion()
+        public async Task DeterminesDeltaOnDeletion()
         {
             var file = "A";
             var readModel = "AB";
             var fileProvider = Substitute.For<IFileProvider>();
             fileProvider.Exists(Arg.Any<string>()).Returns(true);
-            fileProvider.Read(Arg.Any<string>()).Returns(Encoding.UTF8.GetBytes(file));
-            fileProvider.Read(Arg.Any<Stream>()).Returns(Encoding.UTF8.GetBytes(readModel));
+            fileProvider.ReadAsync(Arg.Any<string>()).Returns(Encoding.UTF8.GetBytes(file).ToAsyncEnumerable());
+            fileProvider.ReadAsync(Arg.Any<Stream>()).Returns(Encoding.UTF8.GetBytes(readModel).ToAsyncEnumerable());
             var eventSource = Substitute.For<IEventSource>();
             eventSource.Rebuild(Arg.Any<string>()).Returns(new Document());
             var watcher = Substitute.For<IFileSystemWatcher>();
             var target = new SourceControl(fileProvider, eventSource, watcher);
-            target.Add("path");
+            await target.Add("path");
 
             watcher.Changed += Raise.Event<FileChangedEventHandler>("path");
 

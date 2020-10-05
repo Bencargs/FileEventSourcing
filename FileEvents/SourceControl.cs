@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace FileEvents
 {
@@ -17,50 +18,45 @@ namespace FileEvents
 			_fileProvider = fileProvider;
 			_eventStore = eventStore;
 			_watcher = watcher;
-			_watcher.Changed += OnChanged;
+			_watcher.Changed += async (path) => await OnChanged(path);
 		}
 
-		public void Add(string path)
+		public async Task Add(string path)
 		{
 			if (!_fileProvider.Exists(path))
 				throw new FileNotFoundException(path);
 			
-			_eventStore.CreateRepository(path);
+			var repositoryTask = _eventStore.CreateRepository(path);
 			_watcher.Monitor(path);
+			await repositoryTask;
 		}
 
-		public Document Preview(string path, int bookmark) =>
-			_eventStore.Rebuild(path, bookmark);
+		public async Task<Document> Preview(string path, int bookmark) =>
+			await _eventStore.Rebuild(path, bookmark);
 
-		private void OnChanged(string path)
+		private async Task OnChanged(string path)
 		{
-			var previous = _eventStore.Rebuild(path);
-			var updateEvent = Compare(path, previous);
-			_eventStore.Update(path, updateEvent);
+			var previous = await _eventStore.Rebuild(path);
+			var updateEvent = await Compare(path, previous);
+			await _eventStore.Update(path, updateEvent);
 		}
 
-		private UpdateEvent Compare(string path, Document previous)
+		private async Task<UpdateEvent> Compare(string path, Document previous)
 		{
 			var i = 0;
 			var updateEvent = new UpdateEvent();
-			_fileProvider.GetFilelock(path);
-			using var currentData = _fileProvider.Read(path).GetEnumerator();
-			using var previousData = _fileProvider.Read(previous.Data).GetEnumerator();
-			while (currentData.MoveNext())
+			await _fileProvider.GetFilelock(path);
+			await using var currentData = _fileProvider.ReadAsync(path).GetAsyncEnumerator();
+			await using var previousData = _fileProvider.ReadAsync(previous.Data).GetAsyncEnumerator();
+			while (await currentData.MoveNextAsync())
 			{
-				if (!previousData.MoveNext())
-				{
-					// Addition
+				// Addition || Update
+				if (!await previousData.MoveNextAsync() || currentData.Current != previousData.Current)
 					updateEvent.WriteByte(i, currentData.Current);
-				}
-				else if (currentData.Current != previousData.Current)
-				{
-					// Modification
-					updateEvent.WriteByte(i, currentData.Current);
-				}
+
 				i++;
 			}
-			if (previousData.MoveNext())
+			if (await previousData.MoveNextAsync())
 			{
 				// Deletion
 				updateEvent.Deletion = i;

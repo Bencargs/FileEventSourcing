@@ -1,8 +1,10 @@
-﻿namespace FileEvents
+﻿using System.Threading.Tasks;
+
+namespace FileEvents
 {
 	public interface ISourceControl
 	{
-		void Add(string path);
-		Document Preview(string path, int bookmark);
+		Task Add(string path);
+		Task<Document> Preview(string path, int bookmark);
 	}
 }

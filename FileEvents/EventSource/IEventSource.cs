@@ -1,11 +1,12 @@
 ﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace FileEvents
 {
     public interface IEventSource
     {
-        void CreateRepository(string path);
-        Document Rebuild(string path, int? bookmark = null);
-        void Update(string path, UpdateEvent updateEvent);
+        Task CreateRepository(string path);
+        Task<Document> Rebuild(string path, int? bookmark = null);
+        Task Update(string path, UpdateEvent updateEvent);
     }
 }
