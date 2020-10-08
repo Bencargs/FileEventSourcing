@@ -30,7 +30,7 @@ namespace FileEvents
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            var repositories = _configuration.GetSection("Repositories").Get<string[]>();
+            var repositories = _configuration.GetSection("Repositories").Get<string[]>() ?? new string[0];
             var initialiseTasks = repositories.Select(x => _sourceControl.Add(x));
             await Task.WhenAll(initialiseTasks);
             await HandleMessages(cancellationToken);

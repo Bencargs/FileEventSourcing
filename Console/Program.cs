@@ -1,8 +1,8 @@
 ﻿using McMaster.Extensions.CommandLineUtils;
 using Newtonsoft.Json;
+using System;
 using System.IO;
 using System.IO.Pipes;
-using System.Threading.Tasks;
 
 namespace Console
 {
@@ -78,7 +78,7 @@ namespace Console
         private static void SendMessage(ICommand command)
         {
             using var client = new NamedPipeClientStream("FileEvents");
-            client.Connect();
+            client.Connect(5000);
             var message = JsonConvert.SerializeObject(command);
             using var writer = new StreamWriter(client);
             writer.WriteLine(message);

@@ -20,7 +20,7 @@ namespace FileEvents
                 return string.Equals((string)command.Type, Type) &&
                        !string.IsNullOrWhiteSpace((string)command.Path) &&
                        !string.IsNullOrWhiteSpace((string)command.Destination) &&
-                       command.Bookmark.GetType() == typeof(int);
+                       int.TryParse((string)command.Bookmark, out var _);
             }
             catch (RuntimeBinderException)
             {

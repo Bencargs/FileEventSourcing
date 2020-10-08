@@ -1,15 +1,14 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace FileEvents
 {
     public class WindowsFileProvider : IFileProvider
     {
-        public async Task AppendTextAsync(string path, string line) =>
-            await File.AppendAllLinesAsync(path, new[] { line });
+        public Task AppendTextAsync(string path, string line) =>
+            File.AppendAllLinesAsync(path, new[] { line });
         
         public void Create(string path) =>
             File.Create(path).Close();
@@ -48,8 +47,8 @@ namespace FileEvents
             }
         }
 
-        public async Task<string[]> ReadLinesAsync(string path)
-            => await File.ReadAllLinesAsync(path);
+        public Task<string[]> ReadLinesAsync(string path) => 
+            File.ReadAllLinesAsync(path);
 
         public async Task GetFilelock(string path)
         {

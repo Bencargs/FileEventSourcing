@@ -21,18 +21,18 @@ namespace FileEvents
 			_watcher.Changed += async (path) => await OnChanged(path);
 		}
 
-		public async Task Add(string path)
+		public Task Add(string path)
 		{
 			if (!_fileProvider.Exists(path))
 				throw new FileNotFoundException(path);
 			
 			var repositoryTask = _eventStore.CreateRepository(path);
 			_watcher.Monitor(path);
-			await repositoryTask;
+			return repositoryTask;
 		}
 
-		public async Task<Document> Preview(string path, int bookmark) =>
-			await _eventStore.Rebuild(path, bookmark);
+		public Task<Document> Preview(string path, int bookmark) =>
+			_eventStore.Rebuild(path, bookmark);
 
 		private async Task OnChanged(string path)
 		{
