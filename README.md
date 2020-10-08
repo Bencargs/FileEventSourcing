@@ -16,7 +16,7 @@ This not only loses the history of modifications during backups, but is also an 
 By using event sourcing, every modification to a file is tracked, and only the portions of the file that are modified are recorded.
 
 ## Recreate a File at a Previous Version
-<img src="https://github.com/Bencargs/FileEventSourcing/blob/master/Content/Demo.png" width=40%>
+<img src="https://github.com/Bencargs/FileEventSourcing/blob/master/Content/Demo.gif" width=100%>
 
 <br>
 
