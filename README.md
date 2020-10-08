@@ -32,12 +32,12 @@ sections of modified binary are then serialized and saved back to the event stor
 
 #### Add to Source Control
 ```powershell
-ls
+Console.exe add -f C:\Temp\test\c.bmp
 ```
 
 #### Preview a file at previous version
 ```powershell
-whoami
+Console.exe preview -f C:\Temp\test\c.bmp -v 1 -o C:\Temp\test\preview.bmp
 ```
 
 #### How to use
