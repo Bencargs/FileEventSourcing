@@ -48,7 +48,7 @@ namespace FileEventTests
             dynamic command = new System.Dynamic.ExpandoObject();
             command.Type = "Preview";
             command.Path = file.Fullname;
-            command.Bookmark = 4;
+            command.Bookmark = "4";
             command.Destination = "Destination";
 
             await HandleCommand(target, command);

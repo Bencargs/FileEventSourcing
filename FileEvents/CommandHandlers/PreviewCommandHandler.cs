@@ -30,7 +30,7 @@ namespace FileEvents
 
         public async Task Execute(dynamic command)
         {
-            var document = await _sourceControl.Preview((string)command.Path, (int)command.Bookmark);
+            var document = await _sourceControl.Preview((string)command.Path, int.Parse((string)command.Bookmark));
             await document.Save((string)command.Destination);
         }
     }

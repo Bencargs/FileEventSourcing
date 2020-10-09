@@ -70,7 +70,7 @@ namespace FileEvents
 			await Update(path, updateEvent);
 		}
 
-		private bool TrySerializeChanges(UpdateEvent updateEvent, out string changes)
+		private bool TrySerializeChanges(UpdateEvent updateEvent, out byte[] changes)
 		{
 			changes = null;
 			if (!updateEvent.Updates.Any() && updateEvent.Deletion == null)

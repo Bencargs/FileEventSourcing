@@ -1,20 +1,18 @@
 ﻿using System;
 using System.IO;
 using System.IO.Compression;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace FileEvents
 {
     public static class Compression
     {
-		public static async Task<string> Compress(this string text)
+		public static async Task<string> Compress(this byte[] source)
 		{
-			byte[] buffer = Encoding.UTF8.GetBytes(text);
 			var stream = new MemoryStream();
 			using (var zip = new GZipStream(stream, CompressionMode.Compress, true))
 			{
-				await zip.WriteAsync(buffer, 0, buffer.Length);
+				await zip.WriteAsync(source, 0, source.Length);
 			}
 
 			stream.Position = 0;
@@ -23,11 +21,11 @@ namespace FileEvents
 
 			var output = new byte[compressedData.Length + 4];
 			Buffer.BlockCopy(compressedData, 0, output, 4, compressedData.Length);
-			Buffer.BlockCopy(BitConverter.GetBytes(buffer.Length), 0, output, 0, 4);
+			Buffer.BlockCopy(BitConverter.GetBytes(source.Length), 0, output, 0, 4);
 			return Convert.ToBase64String(output);
 		}
 
-		public static async Task<string> Decompress(this string source)
+		public static async Task<byte[]> Decompress(this string source)
 		{
 			byte[] buffer = Convert.FromBase64String(source);
 			using var stream = new MemoryStream();
@@ -42,7 +40,7 @@ namespace FileEvents
 				await zip.ReadAsync(output, 0, output.Length);
 			}
 
-			return Encoding.UTF8.GetString(output);
+			return output;
 		}
 	}
 }
