@@ -43,7 +43,7 @@ namespace FileEventTests
         {
             using var file = new TemporaryFile();
             var sourceControl = Substitute.For<ISourceControl>();
-            sourceControl.Preview(Arg.Any<string>(), Arg.Any<int>()).Returns(new Document { Data = new MemoryStream() });
+            sourceControl.Preview(Arg.Any<string>(), Arg.Any<int>()).Returns(new Document());
             var target = new PreviewCommandHandler(sourceControl);
             dynamic command = new System.Dynamic.ExpandoObject();
             command.Type = "Preview";

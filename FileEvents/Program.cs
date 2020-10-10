@@ -17,6 +17,7 @@ namespace FileEvents
                     services.AddSingleton(LoadSettings())
                         .AddSingleton<IFileProvider, WindowsFileProvider>()
                         .AddSingleton<IFileSystemWatcher, WindowsFileSystemWatcher>()
+                        .AddSingleton<IRepository, SqliteRepository>()
                         .AddSingleton<IEventSource, EventSource>()
                         .AddSingleton<ISourceControl, SourceControl>()
                         .AddSingleton<IHostedService, ChangeTrackingService>();

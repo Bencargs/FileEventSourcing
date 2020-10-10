@@ -61,13 +61,13 @@ namespace FileEvents
             }
         }
 
-        private async Task HandleCommand(string message)
+        private Task HandleCommand(string message)
         {
             var command = JsonConvert.DeserializeObject<dynamic>(message);            
             var handlers = _commandHandlers.Where(x => x.CanHandle(command));
             var handleTasks = handlers.Select(x => (Task)x.Execute(command));
             
-            await Task.WhenAll(handleTasks);
+            return Task.WhenAll(handleTasks);
         }
     }
 }

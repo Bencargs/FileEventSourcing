@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -7,12 +6,14 @@ namespace FileEvents
 {
 	public class EventSource : IEventSource
 	{
+		private readonly IRepository _repository;
 		private readonly IFileProvider _fileProvider;
 		private readonly Dictionary<string, string> _repositories = 
 			new Dictionary<string, string>();
 
-		public EventSource(IFileProvider fileProvider)
+		public EventSource(IRepository repository, IFileProvider fileProvider)
 		{
+			_repository = repository;
 			_fileProvider = fileProvider;
 		}
 
@@ -20,11 +21,11 @@ namespace FileEvents
 		{
 			var eventsPath = $"{path}.events";
 			_repositories[path] = eventsPath;
-			
-			if (!_fileProvider.Exists(eventsPath))
-				_fileProvider.Create(eventsPath);
 
-			if (_fileProvider.IsEmpty(eventsPath))
+			if (!_fileProvider.Exists(eventsPath))
+				await _repository.Create(eventsPath);
+
+			if (await _repository.IsEmpty(eventsPath))
 				await Initialise(path);
 		}
 
@@ -33,10 +34,8 @@ namespace FileEvents
 			var eventsPath = _repositories[path];
 			if (TrySerializeChanges(updateEvent, out var changes))
 			{
-				var compressionTask = changes.Compress();
-				var fileLockTask = _fileProvider.GetFilelock(eventsPath);
-				await Task.WhenAll(compressionTask, fileLockTask);
-				await _fileProvider.AppendTextAsync(eventsPath, compressionTask.Result);
+				var compressed = await changes.Compress();
+				await _repository.AddRecordAsync(eventsPath, compressed);
 			}
 		}
 
@@ -45,12 +44,10 @@ namespace FileEvents
 			var eventsPath = _repositories[path];
 			bookmark ??= int.MaxValue;
 
-			var document = new Document { Data = new MemoryStream() };
-			await _fileProvider.GetFilelock(path);
-			var fileEvents = await _fileProvider.ReadLinesAsync(eventsPath);
-			foreach (var line in fileEvents.Take(bookmark.Value))
+			var document = new Document();
+			await foreach (var record in _repository.ReadRecordsAsync(eventsPath).Take(bookmark.Value))
 			{
-				var decompressed = await line.Decompress();
+				var decompressed = await record.Decompress();
 				var updateEvent = Protobuf.Deserialize<UpdateEvent>(decompressed);
 				await document.Apply(updateEvent);
 			}
