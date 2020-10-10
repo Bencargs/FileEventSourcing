@@ -15,8 +15,9 @@ namespace FileEventTests
         [Test]
         public async Task CreatesEventsFile()
         {
+            var repository = new SqliteRepository();
             var fileProvider = new WindowsFileProvider();
-            var eventStore = new EventSource(fileProvider);
+            var eventStore = new EventSource(repository, fileProvider);
             using var fileWatcher = new WindowsFileSystemWatcher(fileProvider);
             using var file = new TemporaryFile();
             
@@ -31,8 +32,9 @@ namespace FileEventTests
         [Test]
         public async Task AppendsEvents()
         {
+            var repository = new SqliteRepository();
             var fileProvider = new WindowsFileProvider();
-            var eventStore = new EventSource(fileProvider);
+            var eventStore = new EventSource(repository, fileProvider);
             using var fileWatcher = new WindowsFileSystemWatcher(fileProvider);
             using var file = new TemporaryFile();
 
@@ -42,7 +44,7 @@ namespace FileEventTests
             file.Append("AdditionalText");
 
             await Task.Delay(10000);
-            var lines = (await fileProvider.ReadLinesAsync($"{file.Fullname}.events")).Count();
+            var lines = await repository.ReadRecordsAsync($"{file.Fullname}.events").CountAsync();
             Assert.AreEqual(2, lines);
         }
 
@@ -50,21 +52,23 @@ namespace FileEventTests
         public async Task DeterminesDeltaOnAddition()
         {
             var updateEvent = CreateUpdateEvent(new[] { (0, "ABC") });
+            var repository = Substitute.For<IRepository>();
             var fileProvider = Substitute.For<IFileProvider>();
-            var target = new EventSource(fileProvider);
+            var target = new EventSource(repository, fileProvider);
             await target.CreateRepository("path");
             await target.Update("path", updateEvent);
 
             var expected = await Protobuf.Serialize(updateEvent).Compress();
-            await fileProvider.Received().AppendTextAsync("path.events", expected);
+            await repository.Received().AddRecordAsync("path.events", expected);
         }
 
         [Test]
         public async Task RebuildsPreviousVersion()
         {
             var file = "";
-            var fileProvider = CreateFileProvider(file);
-            var target = new EventSource(fileProvider);
+            var repository = CreateRepository(file);
+            var fileProvider = Substitute.For<IFileProvider>();
+            var target = new EventSource(repository, fileProvider);
             await target.CreateRepository("path");
             await target.Update("path", CreateUpdateEvent(new[] { (0, "A") }));
             await target.Update("path", CreateUpdateEvent(new[] { (0, "B") }));
@@ -79,8 +83,9 @@ namespace FileEventTests
         public async Task HandlesAddition()
         {
             var file = "";
-            var fileProvider = CreateFileProvider(file);
-            var target = new EventSource(fileProvider);
+            var repository = CreateRepository(file);
+            var fileProvider = Substitute.For<IFileProvider>();
+            var target = new EventSource(repository, fileProvider);
             await target.CreateRepository("path");
             await target.Update("path", CreateUpdateEvent(new[] { (0, "A") }));
             await target.Update("path", CreateUpdateEvent(new[] { (1, "B") }));
@@ -94,8 +99,9 @@ namespace FileEventTests
         public async Task HandlesDeletion()
         {
             var file = "";
-            var fileProvider = CreateFileProvider(file);
-            var target = new EventSource(fileProvider);
+            var repository = CreateRepository(file);
+            var fileProvider = Substitute.For<IFileProvider>();
+            var target = new EventSource(repository, fileProvider);
             await target.CreateRepository("path");
             await target.Update("path", CreateUpdateEvent(new[] { (0, "AB") }));
             await target.Update("path", CreateUpdateEvent(new[] { (0, "B") }, 1));
@@ -105,19 +111,19 @@ namespace FileEventTests
             Assert.AreEqual(actual.Data, new MemoryStream(Encoding.UTF8.GetBytes("B")));
         }
 
-        private static IFileProvider CreateFileProvider(string file)
+        private static IRepository CreateRepository(string file)
         {
-            var fileProvider = Substitute.For<IFileProvider>();
-            fileProvider.When(x => x.AppendTextAsync(Arg.Any<string>(), Arg.Any<string>()))
+            var repository = Substitute.For<IRepository>();
+            repository.When(x => x.AddRecordAsync(Arg.Any<string>(), Arg.Any<string>()))
             .Do(x =>
             {
                 file += $"{x.ArgAt<string>(1)}{Environment.NewLine}";
             });
-            fileProvider.ReadLinesAsync(Arg.Any<string>()).Returns(x =>
+            repository.ReadRecordsAsync(Arg.Any<string>()).Returns(x =>
             {
-                return Task.FromResult(ReadLines(file).ToArray());
+                return ReadLines(file).ToArray().ToAsyncEnumerable();
             });
-            return fileProvider;
+            return repository;
         }
 
         private static IEnumerable<string> ReadLines(string file)

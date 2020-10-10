@@ -5,7 +5,7 @@ namespace FileEvents
 {
     public class Document
     {
-        public Stream Data { get; set; }
+        public Stream Data { get; set; } = new MemoryStream();
 
         public async Task Apply(UpdateEvent updateEvent)
         {
